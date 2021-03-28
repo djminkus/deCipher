@@ -12,7 +12,7 @@ bg = p.rect(0,0, W, H).attr({'fill':'#111111'})
 
 //test = p.rect(10,10, 50,50).attr({'fill':'red'})
 
-b_size = 50*.8; //block size
+b_size = 50; //block size
 
 // bucket = p.path("M0,0 L10, 10").attr({'stroke':'white'})
 
@@ -166,7 +166,7 @@ function swapBlocks(){
   if (left_block) { left_block.transform('...t'+b_size+",0")}
   if (right_block) { right_block.transform('...t'+(-1*b_size)+",0")}
 
-  if (left_block || right_block){ //If at least one block is being moved, update the grids:
+  if (left_block || right_block){
     //update the color grid
     dec.grid[cursor.data('left')[1]][cursor.data('left')[0]] = right_color_num
     dec.grid[cursor.data('right')[1]][cursor.data('right')[0]] = left_color_num
@@ -175,16 +175,16 @@ function swapBlocks(){
     dec.blockGrid[cursor.data('left')[1]][cursor.data('left')[0]] = right_block
     dec.blockGrid[cursor.data('right')[1]][cursor.data('right')[0]] = left_block
 
-    if( left_block ? !right_block : right_block ) { // XOR operator. If only one block is moved, apply gravity.
+    if( left_block ? !right_block : right_block ) {
       //Figure out which block was empty:
       if(!left_block){var empty = 'left'}
       else{var empty= 'right' }
 
       gravity('swap', empty)
-    }
+    } // XOR operator. If only one block is moved, apply gravity.
 
     clearBlocks();
-  }
+  } //If at least one block is being moved, update the grids and call clearBlocks():
   console.log('swapped')
   //  both_empty = (left_color_num == -1 && right_color_num == -1);
 }
@@ -291,41 +291,55 @@ function clearBlocks(){
   for(var col=0; col<bucket_width; col++){
     for(var row=0; row<bucket_height; row++){
       var marked=false;
-      if (dec.grid[row][col] !== -1){
+      color_num = dec.grid[row][col]
+      if (color_num !== -1){
+        console.log('HERE (row ' +row+ ', col ' +col+', color_num '+color_num+ ')')
         var how_many_r = 0; // how many matching blocks found to the right
         var how_many_u = 0; // how many matching blocks found upwards
         // We're starting from the bottom left,
         //   and will read rightward through the row, then shift up a row, etc.
-        while(color_num == dec.grid[row][col+how_many_r+1] ){ how_many_r++}
-        while(color_num == dec.grid[row + how_many_u + 1][col] ){ how_many_r++}
-        if(dec.blockGrid[0][0].data('cluster') !== undefined){marked=true} //For code readability, check if block is already marked.
+        if(col+1 !== bucket_width){
+          while(col + 1 < bucket_width &&
+                color_num == dec.grid[row][col+ how_many_r +1] ){ how_many_r++ }
+        } // Find matches right, but only if we're not at the last column.
+        //console.log('hurr')
+        if(row+1 !== bucket_height){
+          while(row+1 < bucket_height &&
+                color_num == dec.grid[row + how_many_u + 1][col] ){ how_many_u++ }
+        } // Find matches up, but only if we're not at the last row
+        if(dec.blockGrid[row][col].data('cluster') !== undefined){marked=true} //For code readability, check if block is already marked.
         if (how_many_r>1){
           if (!marked){clusters_found++;} //This hasn't been marked yet, so it belongs to a new cluster.
           for(var a=0; a<how_many_r; a++){
-            console.log('here')
+            console.log('here r')
             dec.blockGrid[row][col+a].data('cluster', clusters_found)
-            console.log('here?')
+            console.log('here? r')
           }
+          marked = true;
         }  //we have a cluster. Mark it and the matching blocks to the right.
         if (how_many_u>1){
           if (!marked){clusters_found++;} //This hasn't been marked yet, so it belongs to a new cluster.
           for(var a=0; a<how_many_u; a++){
-            console.log('here')
+            console.log('here u')
             dec.blockGrid[row+a][col].data('cluster', clusters_found)
-            console.log('here?')
+            console.log('here? u')
           }
         } //we have a cluster. Mark it and the matching blocks above it.
       } //If there's a block here, check for matches.
     } //end row loop
   } //end col loop
 
+  //console.log('hear')
+
   // Clear marked blocks:
   for(var col=0; col<bucket_width; col++){
     for(var row=0; row<bucket_height; row++){
-      if(dec.blockGrid[row][col].data('cluster', clusters_found) > 0 ) {
-        dec.blockGrid[row][col].remove(); //remove it from the GUI
-        dec.grid[row][col] =-1
-      }
+      if(dec.blockGrid[row][col]){
+        if(dec.blockGrid[row][col].data('cluster', clusters_found) > 0 ) {
+          dec.blockGrid[row][col].remove(); //remove it from the GUI
+          dec.grid[row][col] =-1
+        } // and it belongs to a non-zero cluster, clear it.
+      } //if the block exists,
     } //end row loop
   } //end col loop
   console.log('cleared blocks')
@@ -453,7 +467,7 @@ $(window).keydown(function(event){
             break;
         }
       }
-      catch(err){ console.log('error was thrown' + err); }
+      catch(err){ console.log('error was thrown: ' + err); }
       break;
     default:
       ;
