@@ -98,7 +98,8 @@ function makeBlocks(){
   return columns;
 }
 
-makeBlocks()
+makeBlocks(); //create initial blocks with RNG
+clearBlocks(); //clear any matching clusters
 
 pre = p.rect(MARGIN, MARGIN + bucket_height*b_size,
              bucket_width*b_size, 2*b_size)
@@ -150,7 +151,7 @@ function moveCursor(dir){ //move the cursor and update its data
 }
 
 function swapBlocks(){
-  console.log('swapping')
+  console.log('- swapping blocks -')
 
   //Get the colors of the blocks
   left_color_num = dec.grid[cursor.data('left')[1]][cursor.data('left')[0]]
@@ -183,23 +184,18 @@ function swapBlocks(){
       gravity('swap', empty)
     } // XOR operator. If only one block is moved, apply gravity.
 
-    clearBlocks();
+    findClusters();
   } //If at least one block is being moved, update the grids and call clearBlocks():
-  console.log('swapped')
+  console.log('- blocks swapped -')
   //  both_empty = (left_color_num == -1 && right_color_num == -1);
-}
-
-dec.keycodes = {
-  65: 'left', //a
-  87: 'up',   //w
-  68: 'right',//d
-  83: 'down', //s
 }
 
 function gravity(reason, arg){
   console.log('applying gravity because ' + reason)
-  // Possible reasons are 'swap' and 'match'. For swap, pass 'left' if the left space was empty,
-  //   and 'right' if the right space was empty.
+  // Possible reasons are 'swap' and 'match'.
+    // For swap, pass 'left' if the left space was empty,
+    //   and 'right' if the right space was empty.
+    // For match, pass the locations of the cleared blocks. (see clear_locs in findClusters)
 
   // If due to swapping (and not on the first row), check beneath the side
   //   of the cursor that was empty for space,
@@ -274,18 +270,92 @@ function gravity(reason, arg){
   }
 
   if(reason == 'match'){
-    //Check each grid spot
+    for(var col=0; col<bucket_width; col++){
+      for(var row=1; row<bucket_height; row++){
+        if(dec.blockGrid[row][col]){ // If the block exists,
+          if (dec.grid[row - 1][col] == -1) {
+            // Find how far to drop it:
+            var how_far = 0;
+            var go = true;
+            while(go){ // find how far to drop it:
+              how_far++;
+              next_spot = dec.grid[row - how_far][col]
+              if (next_spot !== -1) {
+                go = false;
+                how_far--; //fix the off-by-one error
+              } //stop if you find a block
+              if(row-how_far == 0) {go = false;} //or if you reach the bottom
+            }
+            // console.log('drop it ' +how_far+ ' spaces')
 
+            var block_to_drop = dec.blockGrid[row][col];
+            block_to_drop.animate({
+              'y': block_to_drop.attr('y') + how_far*b_size
+            }, Math.sqrt(2*how_far/dec.G), '<')
+
+            //update the grids:
+            dec.grid[row - how_far][col] = dec.grid[row][col];
+            dec.grid[row][col] = -1;
+            dec.blockGrid[row - how_far][col] = block_to_drop;
+            dec.blockGrid[row][col] = undefined;
+          } //no block below the freshly swapped block. Drop it.
+        } //if the block exists, (codepen)
+      } //end row loop
+    } //end col loop
+
+    //Not implemented: Check each grid spot that was cleared.
+    console.log('blocks were cleared at these locations: ')
+    console.log(arg)
+  } // implementation could be more efficient using the arg, but eh
+
+  if (reason=='command'){
+    // Check beneath each grid spot which is above the first row and contains a block.
+    for(var col=0; col<bucket_width; col++){
+      for(var row=1; row<bucket_height; row++){
+        if(dec.blockGrid[row][col]){ // If the block exists,
+          if (dec.grid[row - 1][col] == -1) {
+            // Find how far to drop it:
+            var how_far = 0;
+            var go = true;
+            while(go){ // find how far to drop it
+              how_far++;
+              next_spot = dec.grid[row - how_far][col]
+              if (next_spot !== -1) {
+                go = false;
+                how_far--; //fix the off-by-one error
+              } //stop if you find a block
+              if(row-how_far == 0) {go = false;} //or if you reach the bottom
+            }
+            // console.log('drop it ' +how_far+ ' spaces')
+
+            var block_to_drop = dec.blockGrid[row][col];
+            block_to_drop.animate({
+              'y': block_to_drop.attr('y') + how_far*b_size
+            }, Math.sqrt(2*how_far/dec.G), '<')
+
+            //update the grids:
+            dec.grid[row - how_far][col] = dec.grid[row][col];
+            dec.grid[row][col] = -1;
+            dec.blockGrid[row - how_far][col] = block_to_drop;
+            dec.blockGrid[row][col] = undefined;
+          } //no block below the freshly swapped block. Drop it.
+        } //if the block exists, (codepen)
+      } //end row loop
+    } //end col loop
   }
+
   console.log('applied gravity')
+  return null;
 }
 
-function clearBlocks(){
-  console.log('clearing blocks')
-  // Check the grid for lines of 3 or more matching blocks.
-  // If found, remove them from the board with a simple animation.
+function findClusters(){
+  console.log('finding matches/clusters')
+  // Check the grid for lines ('clusters') of 3 or more matching blocks.
+  // If found, return their locations as an array.
 
+  const DEBUG = false; //set to true to log more stuff
   var clear_locs = []; //grid locations of blocks to be cleared in [col, row] format
+                       //(Not fully implemented)
   var color_num;
   var clusters_found = 0
   for(var col=0; col<bucket_width; col++){
@@ -293,7 +363,7 @@ function clearBlocks(){
       var marked=false;
       color_num = dec.grid[row][col]
       if (color_num !== -1){
-        console.log('HERE (row ' +row+ ', col ' +col+', color_num '+color_num+ ')')
+        if (DEBUG){console.log('Checking block: row ' +row+ ', col ' +col+', color_num '+color_num+ ')')}
         var how_many_r = 0; // how many matching blocks found to the right
         var how_many_u = 0; // how many matching blocks found upwards
         // We're starting from the bottom left,
@@ -310,41 +380,69 @@ function clearBlocks(){
         if(dec.blockGrid[row][col].data('cluster') !== undefined){marked=true} //For code readability, check if block is already marked.
         if (how_many_r>1){
           if (!marked){clusters_found++;} //This hasn't been marked yet, so it belongs to a new cluster.
-          for(var a=0; a<how_many_r; a++){
-            console.log('here r')
+          for(var a=0; a<=how_many_r; a++){
+            if(DEBUG){console.log('here r')}
             dec.blockGrid[row][col+a].data('cluster', clusters_found)
-            console.log('here? r')
+            if(DEBUG){console.log('here? r')}
+            clear_locs.push([row,col])
           }
           marked = true;
         }  //we have a cluster. Mark it and the matching blocks to the right.
         if (how_many_u>1){
           if (!marked){clusters_found++;} //This hasn't been marked yet, so it belongs to a new cluster.
-          for(var a=0; a<how_many_u; a++){
-            console.log('here u')
-            dec.blockGrid[row+a][col].data('cluster', clusters_found)
-            console.log('here? u')
+          for(var a=0; a<=how_many_u; a++){
+            if(DEBUG){console.log('here u')}
+            dec.blockGrid[row+a][col].data('cluster', clusters_found) // Give it its cluster
+            if(DEBUG){console.log('here? u')}
+            clear_locs.push([row,col])
           }
+          marked = true;
         } //we have a cluster. Mark it and the matching blocks above it.
       } //If there's a block here, check for matches.
     } //end row loop
   } //end col loop
+  console.log(''+clusters_found+' clusters found')
 
-  //console.log('hear')
+  if (clusters_found>0){clearBlocks(clear_locs)}
+  //return gravity('match', clear_locs)
+  return null
+}
 
+function clearBlocks(clear_locs){
+  console.log('clearing blocks')
   // Clear marked blocks:
   for(var col=0; col<bucket_width; col++){
     for(var row=0; row<bucket_height; row++){
       if(dec.blockGrid[row][col]){
-        if(dec.blockGrid[row][col].data('cluster', clusters_found) > 0 ) {
+        if(dec.blockGrid[row][col].data('cluster') > 0 ) {
           dec.blockGrid[row][col].remove(); //remove it from the GUI
+          dec.blockGrid[row][col]=undefined; //remove the reference to it
           dec.grid[row][col] =-1
         } // and it belongs to a non-zero cluster, clear it.
       } //if the block exists,
     } //end row loop
   } //end col loop
-  console.log('cleared blocks')
-  return gravity('match', clear_locs)
+  console.log('done clearing blocks')
+  return gravity('match',clear_locs)
+  // return null;
 }
+
+function raiseGrid(){
+  // Raise all existing rows in the main grid by one.
+  // Move the top line of the "pre" grid into the main grid's bottom row
+  // Raise the bottom line of the "pre grid" to the top
+  // Make a new line on the bottom of the pre grid
+
+  console.log('Raising the grid... (not implemented yet)');
+  
+}
+
+dec.keycodes = {
+  65: 'left', //a
+  87: 'up',   //w
+  68: 'right',//d
+  83: 'down', //s
+} // maps keys to cursor directions
 
 //LISTEN FOR INPUT
 $(window).keydown(function(event){
@@ -359,7 +457,7 @@ $(window).keydown(function(event){
   // }
   if(dec.ignoreInput){return;}
   switch(dec.mode){ //do the right thing based on what type of screen the user is in (menu, game, tutorial, etc)
-    case "menu":
+    case "menu": //code from Q-Po. May be useful later
       switch(event.keyCode){
         case 8: // backspace/delete: return to the previous menu
           event.preventDefault();
@@ -444,12 +542,16 @@ $(window).keydown(function(event){
             //console.log(moveStr)
             moveCursor(moveStr);
             break;
+          case 70: //f (gravity)
+            gravity('command')
+            break;
           case 32: //spacebar
             event.preventDefault();
             swapBlocks();
             break;
-          case 16: //shift
-            console.log('push the next row up.')
+          case 16: //shift (raise the grid)
+            raiseGrid();
+            break;
           // case 37: //left
           // case 38: //up
           // case 39: //right
