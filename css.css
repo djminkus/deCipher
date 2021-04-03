@@ -1,4 +1,10 @@
 body {
   background-color: black;
   color: white;
+  font-family: 'Open Sans', sans-serif;
+}
+
+
+p {
+  margin-left: 10px;
 }

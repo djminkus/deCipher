@@ -4,6 +4,7 @@ dec = {} //catcher object for this game (to prevent global vars) .
 dec.mode = 'game'
 
 
+
 W = 600 // width
 H = 800 // height
 p = new Raphael("raphCon", W, H)
@@ -20,15 +21,19 @@ b_size = 50; //block size
 // Plus one row of upcoming blocks (maybe two with special effects?)
 bucket_width = 6   //in blocks
 bucket_height = 12
+pre_height = 2
 
-colors = ['red', '#dddd00','#22ff22','#0099ff','#ff33ff']
+dec.DEBUG = true;
+
+dec.COLORS = ['red', '#dddd00','#22ff22','#0099ff','#ff33ff']
+dec.NUM_COLORS = 5 // How many colors to choose from
 //                yellow     green    blue       purple
 
 MARGIN = 25
 bucket = p.rect(MARGIN, MARGIN, bucket_width*b_size,
                bucket_height*b_size).attr({'fill':'#222222'})
 
-dec.G = .0001 // gravity factor
+dec.G = .00001 // gravity factor
 
 // grid holds the numbers of the colors of the blocks:
 dec.grid = [[-1, -1, -1, -1, -1, -1], //bottom row (yes it's upside-down)
@@ -44,7 +49,17 @@ dec.grid = [[-1, -1, -1, -1, -1, -1], //bottom row (yes it's upside-down)
             [-1, -1, -1, -1, -1, -1],
             [-1, -1, -1, -1, -1, -1]];
 // -1 for no block, 0 for red, 1 yellow, 2 green, 3 blue, 4 purple
-// dec.grid[row][column]
+// dec.grid[row][column] is syntax
+
+// More general syntax that allows bucket dimensions to be changed quickly above (not tested):
+// dec.grid = []
+// for(var rowNum = 0; rowNum < bucket_height; rowNum++){
+//   for(var colNum =0; colNum < bucket_width; colNum++){
+//     var newRow = []
+//     newRow.push(-1)
+//   }
+//   dec.grid.push(newRow)
+// }
 
 // blockGrid holds the actual references to the blocks.
 dec.blockGrid =[ [undefined, undefined, undefined, undefined, undefined, undefined], //bottom row (yes it's upside-down)
@@ -60,7 +75,7 @@ dec.blockGrid =[ [undefined, undefined, undefined, undefined, undefined, undefin
                 [undefined, undefined, undefined, undefined, undefined, undefined],
                 [undefined, undefined, undefined, undefined, undefined, undefined]]
 
-dec.preGrid = [ [-1, -1, -1, -1, -1, -1], //bottom row (yes it's upside-down)
+dec.preGrid = [ [-1, -1, -1, -1, -1, -1], //bottom row (yes it's visually upside-down here)
                 [-1, -1, -1, -1, -1, -1]] //
 
 dec.preBlockGrid =[ [undefined, undefined, undefined, undefined, undefined, undefined], //bottom row (yes it's upside-down)
@@ -71,35 +86,89 @@ function randInt(ceil){ //returns random int from 0 to ceil-1
 }
 
 function makeBlocks(){
-  var color;
-  column_pops = [] //populations (# of blocks in each column)
-  columns = []
+  var color, colorNum, newBlock;
+  var column_pops = [] //populations (# of blocks in each column)
+  var columns = [] // An array of Raphael sets. NOT REALLY IMPLEMENTED.
+               // To implement would need to add logic to swapBlocks, clearBlocks, and raiseGrid.
+  const DEBUG = false;
+
   for (var i=0; i<bucket_width; i++){columns[i] = p.set()}
-  // Fill each column with a random number of blocks (less than 9).
-  for (var i=0; i<bucket_width; i++){
-    column_pops[i] = randInt(9);
-    for (var j=0; j<column_pops[i]; j++){
-      colorNum = randInt(5)
-      var newBlock = p.rect(MARGIN + i*b_size, MARGIN + (11-j)*b_size,
-                            b_size, b_size).attr({'fill': colors[colorNum]})
+
+  // Fill each column of the main grid with a random number of blocks (less than 9),
+  // and fill the pre.
+  for (var i=0; i<bucket_width; i++){ //column  loop
+    column_pops[i] = randInt(9); //find how many blocks to create in each column.
+    DEBUG? console.log('Making column '+i) : null;
+
+    for (var j=0; j<column_pops[i]; j++){ //row loop  (Main grid)
+      DEBUG? console.log("Making row " + j +" in column " + i) : null;
+      newBlock = p.rect(MARGIN + i*b_size, MARGIN + (11-j)*b_size, b_size, b_size)
+
+      // Pick a new color if this would make a cluster.
+      // TODO: FIND A WAY TO CHECK BOTH ROWS AND COLUMNS. nested while?
+      var colCheck = false;
+      var rowCheck = false;
+      var whileCount = 0;
+      while(!(colCheck && rowCheck)){
+        colorNum = randInt(dec.NUM_COLORS); //Pick a color for the new block
+        //if (whileCount > 10) {break;} // For debugging
+        //whileCount++; // For debugging
+        DEBUG ? console.log('while') : null ;
+        cc: { //check blocks below it
+          var colCheck = false;
+          if (j<2) {colCheck =true; break cc;} //skip first two rows
+          for(var k=1; k<3; k++){ //Check near the new block for two matching blocks
+            if (dec.grid[j-k][i]!==colorNum) { //check below:
+              colCheck=true;
+              break cc; //break out of column check
+            } //end if
+          } //end row while
+        } //end column check
+        DEBUG? console.log('cc: ' + colCheck) : null;
+
+        rc: {
+          var rowCheck = false;
+          if(i<2){ rowCheck=true; break rc; } // skip first two columns
+          for(var k=1; k<3; k++){ //Check near the new block for two matching blocks
+            if (dec.grid[j][i-k]!==colorNum) { //check to the left:
+              rowCheck=true;
+              break rc; //break out of row check
+            } //end if
+          } //end for
+        } //end row wcheck
+        DEBUG? console.log('rc: ' + colCheck) : null;
+      }
+
+      newBlock.attr({'fill': dec.COLORS[colorNum]});
       dec.grid[j][i]=colorNum;
       dec.blockGrid[j][i]=newBlock;
       //if(i==0){console.log('adding type ' + colorNum + ' block to column 0......')}
       columns[i].push(newBlock); //add block to that column's set.
-    }
+    } //end row loop
 
-    //populate pre:
-    var newBlock = p.rect(MARGIN + i*b_size, MARGIN + (13)*b_size,
-                            b_size, b_size).attr({'fill':colors[randInt(5)]})
-    var newBlock = p.rect(MARGIN + i*b_size, MARGIN + (12)*b_size,
-                          b_size, b_size).attr({'fill':colors[randInt(5)]})
-    //TODO: add to grids
+    DEBUG ? console.log('hm'): null;
+    // Row loop (preGrid)
+    for (var j=0; j<pre_height; j++){
+      colorNum = randInt(dec.NUM_COLORS)
+      newBlock = p.rect(MARGIN + i*b_size, MARGIN + (bucket_height + pre_height - (j+1))*b_size,
+                            b_size, b_size).attr({'fill': dec.COLORS[colorNum]})
+      dec.preGrid[j][i]=colorNum;
+      dec.preBlockGrid[j][i]=newBlock;
+      //if(i==0){console.log('adding type ' + colorNum + ' block to column ' + i + ' of pre...')}
+    }
+    DEBUG? console.log('yay'): null;
+
+    // OLD CODE (replaced by last paragraph)
+    // var newBlock = p.rect(MARGIN + i*b_size, MARGIN + (13)*b_size,
+    //                         b_size, b_size).attr({'fill':dec.COLORS[randInt(5)]})
+    // var newBlock = p.rect(MARGIN + i*b_size, MARGIN + (12)*b_size,
+    //                       b_size, b_size).attr({'fill':dec.COLORS[randInt(5)]})
+
   }
   return columns;
 }
 
 makeBlocks(); //create initial blocks with RNG
-clearBlocks(); //clear any matching clusters
 
 pre = p.rect(MARGIN, MARGIN + bucket_height*b_size,
              bucket_width*b_size, 2*b_size)
@@ -118,6 +187,7 @@ leftString = '...t' + (-1 * b_size) + ',0'
 rightString = '...t' + (b_size) + ',0'
 
 function moveCursor(dir){ //move the cursor and update its data
+  cursor.toFront();
   switch(dir){
     case 'up' :
       if (cursor.data('left')[1] < 11){ //only move it if it will stay within the play area
@@ -152,20 +222,25 @@ function moveCursor(dir){ //move the cursor and update its data
 
 function swapBlocks(){
   console.log('- swapping blocks -')
+  const DEBUG = false;
 
   //Get the colors of the blocks
   left_color_num = dec.grid[cursor.data('left')[1]][cursor.data('left')[0]]
   right_color_num = dec.grid[cursor.data('right')[1]][cursor.data('right')[0]]
-  //console.log(left_color_num)
+  DEBUG ? console.log('left_color_num: ' +left_color_num) : null;
 
   //Get references to the blocks
   left_block = dec.blockGrid[cursor.data('left')[1]][cursor.data('left')[0]]
   right_block = dec.blockGrid[cursor.data('right')[1]][cursor.data('right')[0]]
-  //console.log(left_block)
+  if(DEBUG) {
+    console.log('left_block:')
+    console.log(left_block)
+  }
 
   // translate the blocks
   if (left_block) { left_block.transform('...t'+b_size+",0")}
   if (right_block) { right_block.transform('...t'+(-1*b_size)+",0")}
+  DEBUG ? console.log('something') : null;
 
   if (left_block || right_block){
     //update the color grid
@@ -176,65 +251,121 @@ function swapBlocks(){
     dec.blockGrid[cursor.data('left')[1]][cursor.data('left')[0]] = right_block
     dec.blockGrid[cursor.data('right')[1]][cursor.data('right')[0]] = left_block
 
-    if( left_block ? !right_block : right_block ) {
+    if( left_block ? !right_block : right_block ) { // XOR operator. If only one block is moved, apply gravity.
       //Figure out which block was empty:
       if(!left_block){var empty = 'left'}
       else{var empty= 'right' }
 
       gravity('swap', empty)
-    } // XOR operator. If only one block is moved, apply gravity.
+    }
 
     findClusters();
-  } //If at least one block is being moved, update the grids and call clearBlocks():
+  } //If at least one block is being moved, update the grids and call clearBlocks(): (codepen)
+  updateText()
   console.log('- blocks swapped -')
   //  both_empty = (left_color_num == -1 && right_color_num == -1);
 }
 
+dec.textGrid = [['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'], //bottom row (yes it's upside-down)
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined']]
+function showVals(){
+  for(var col=0; col<bucket_width; col++){
+    for(var row=0; row<bucket_height; row++){
+      var textEl = p.text(MARGIN + (bucket_width - col-.5)*b_size , MARGIN + (bucket_height-row-.5)*b_size, dec.grid[row][bucket_width-1-col]);
+      textEl.attr({'stroke':'white'})
+      dec.textGrid[row][col] = textEl;
+    }
+  }
+  return null;
+};
+showVals();
+function updateText(){
+  for(var col=0; col<bucket_width; col++){
+    for(var row=0; row<bucket_height; row++){
+      textEl = dec.textGrid[row][col]
+      textEl.attr({'text': dec.grid[row][bucket_width-1-col]});
+      textEl.toFront();
+    }
+  }
+  return null;
+}
+
+function blockDropAnim(block, distance){
+  const DEBUG = true;
+  var self = this;
+  DEBUG ? console.log('making a dropping animation:') : null;
+  DEBUG ? console.log('... block to animate: ') : null;
+  DEBUG ? console.log(block) : null;
+  DEBUG ? console.log('... distance to drop: ' + distance) : null;
+  // DEBUG? console.log('value of "this" in blockDropAnim: ') :null;
+  // DEBUG? console.log(this) :null;
+  // DEBUG? console.log('value of "DEBUG" in blockDropAnim: ') :null;
+  // DEBUG? console.log(DEBUG) :null;
+  // Returns a Raphael animation for the passed block to drop the passed distance (in blocks):
+  const anim =  p.raphael.animation({ 'y': block.attr('y') + distance*b_size },
+                                      Math.sqrt(2*distance/dec.G), '<', updateAndFind.bind(block));
+  DEBUG? console.log('anim made.') : null;
+  return anim;
+};
 function gravity(reason, arg){
   console.log('applying gravity because ' + reason)
+  const DEBUG = true;
   // Possible reasons are 'swap' and 'match'.
     // For swap, pass 'left' if the left space was empty,
     //   and 'right' if the right space was empty.
     // For match, pass the locations of the cleared blocks. (see clear_locs in findClusters)
 
-  // If due to swapping (and not on the first row), check beneath the side
+  // If due to swapping, check beneath the side
   //   of the cursor that was empty for space,
   //   and above the side of the cursor that was full for blocks.
-  //   If empty space is found, move that block and all blocks above it downward.
-  if (reason == 'swap' && (cursor.data('left')[1] > 0)){
+  //   If empty space is found, do stuff
+  var row_num = cursor.data('left')[1]; //row number of cursor
+  if (reason == 'swap') {
+    DEBUG? console.log('row_num: ' + row_num ) :null;
     // Left side of cursor was at cursor.data('left')
     var empty = arg; //'left' or 'right'
+    DEBUG? console.log('empty: ' + empty) :null;
     var was_empty = cursor.data(empty);
-    if (dec.grid[was_empty[1] - 1][was_empty[0]] == -1) {
-      // Find how far to drop it:
-      var how_far = 0;
-      var go = true;
-      while(go){ // find how far to drop it
-        how_far++;
-        next_spot = dec.grid[was_empty[1] - how_far][was_empty[0]]
-        if (next_spot !== -1) {
-          go = false;
-          how_far--; //fix the off-by-one error
-        } //stop if you find a block
-        if(was_empty[1]-how_far == 0) {go = false;} //or if you reach the bottom
+    if (row_num > 0){ //If not on the bottom row, check for empty space beneath:
+      if (dec.grid[was_empty[1] - 1][was_empty[0]] == -1) { //empty space below the freshly swapped block. Drop it.
+        // Find how far to drop it:
+        var how_far = 0;
+        var go = true;
+        while(go){ // find how far to drop it
+          how_far++;
+          next_spot = dec.grid[was_empty[1] - how_far][was_empty[0]]
+          if (next_spot !== -1) {
+            go = false;
+            how_far--; //fix the off-by-one error
+          } //stop if you find a block
+          if(was_empty[1]-how_far == 0) {go = false;} //or if you reach the bottom
+        }
+        // console.log('drop it ' +how_far+ ' spaces')
+
+        var block_to_drop = dec.blockGrid[was_empty[1]][was_empty[0]];
+        block_to_drop.animate(blockDropAnim(block_to_drop, how_far))
+
+        //update the grids:
+        dec.grid[was_empty[1] - how_far][was_empty[0]] = dec.grid[was_empty[1]][was_empty[0]];
+        dec.grid[was_empty[1]][was_empty[0]] = -1;
+        dec.blockGrid[was_empty[1] - how_far][was_empty[0]] = block_to_drop;
+        dec.blockGrid[was_empty[1]][was_empty[0]] = undefined;
       }
-      // console.log('drop it ' +how_far+ ' spaces')
-
-      var block_to_drop = dec.blockGrid[was_empty[1]][was_empty[0]];
-      block_to_drop.animate({
-        'y': block_to_drop.attr('y') + how_far*b_size
-      }, Math.sqrt(2*how_far/dec.G), '<')
-
-      //update the grids:
-      dec.grid[was_empty[1] - how_far][was_empty[0]] = dec.grid[was_empty[1]][was_empty[0]];
-      dec.grid[was_empty[1]][was_empty[0]] = -1;
-      dec.blockGrid[was_empty[1] - how_far][was_empty[0]] = block_to_drop;
-      dec.blockGrid[was_empty[1]][was_empty[0]] = undefined;
-    } //no block below the freshly swapped block. Drop it.
+    }
 
     var full = (arg=='left' ? 'right' : 'left')
     var was_full = cursor.data(full)
-    if(dec.grid[was_full[1] + 1][was_full[0]] !== -1) {
+    if(dec.grid[was_full[1] + 1][was_full[0]] !== -1) { // block(s) tableclothed. Drop it/them.
       // This time we know how far to drop (1 space), but we need to find how many blocks are dropping:
       // Find how many:
       var how_many = 0;
@@ -252,9 +383,7 @@ function gravity(reason, arg){
       } // find how many to drop and collect them in a set!
       for (var i=0; i<blocks_to_drop.length; i++){
         block_to_drop = blocks_to_drop[i]
-        block_to_drop.animate({
-          'y': block_to_drop.attr('y') + b_size
-        }, Math.sqrt(2/dec.G), '<')
+        block_to_drop.animate(blockDropAnim(block_to_drop, 1))
 
         // Update the grids:
         dec.grid[was_full[1]+i][was_full[0]] = dec.grid[was_full[1]+i+1][was_full[0]];
@@ -265,48 +394,74 @@ function gravity(reason, arg){
 
         dec.blockGrid[was_full[1]+i][was_full[0]] = block_to_drop;
         dec.blockGrid[was_full[1]+i+1][was_full[0]] = undefined;
-      }
-    } // block(s) tableclothed. Drop it/them.
+      } // end for
+    } // block(s) tableclothed. Drop it/them. (codepen)
   }
 
   if(reason == 'match'){
     for(var col=0; col<bucket_width; col++){
       for(var row=1; row<bucket_height; row++){
-        if(dec.blockGrid[row][col]){ // If the block exists,
-          if (dec.grid[row - 1][col] == -1) {
+        if(dec.blockGrid[row][col]){ // Skip this if no block is here.
+          if (dec.grid[row - 1][col] == -1) { //empty space below the block in question. Drop it...
             // Find how far to drop it:
             var how_far = 0;
             var go = true;
             while(go){ // find how far to drop it:
               how_far++;
-              next_spot = dec.grid[row - how_far][col]
-              if (next_spot !== -1) {
+              if(row-how_far == 0) {go = false; break;} //Stop if you reach the bottom
+              next_spot = dec.grid[row - how_far][col] //Color value of next spot downward
+              if (next_spot !== -1) {//stop if you find a block
                 go = false;
                 how_far--; //fix the off-by-one error
-              } //stop if you find a block
-              if(row-how_far == 0) {go = false;} //or if you reach the bottom
+              }
             }
             // console.log('drop it ' +how_far+ ' spaces')
 
+            // Then, drop it:
             var block_to_drop = dec.blockGrid[row][col];
-            block_to_drop.animate({
-              'y': block_to_drop.attr('y') + how_far*b_size
-            }, Math.sqrt(2*how_far/dec.G), '<')
+            var dropping = block_to_drop.data('dropping')
+            if(!dropping){
+              block_to_drop.animate(blockDropAnim(block_to_drop, how_far))
+              //update the grids:
+              dec.grid[row - how_far][col] = dec.grid[row][col];
+              dec.grid[row][col] = -1;
+              dec.blockGrid[row - how_far][col] = block_to_drop;
+              dec.blockGrid[row][col] = undefined;
 
-            //update the grids:
-            dec.grid[row - how_far][col] = dec.grid[row][col];
-            dec.grid[row][col] = -1;
-            dec.blockGrid[row - how_far][col] = block_to_drop;
-            dec.blockGrid[row][col] = undefined;
-          } //no block below the freshly swapped block. Drop it.
-        } //if the block exists, (codepen)
+              // Then drop the blocks above it the same amount.
+              // First build the stack:
+              var stack_height = 0 // how many additional blocks are above the one being dropped
+              var sequence = [] // The sequence of numbers representing the blocks' colors
+              var stack = [] // The actual sequence of blocks
+              while(dec.grid[row+1+stack_height][col]){
+                if (row+1+stack_height == bucket_height || dec.grid[row+1+stack_height][col] ==-1) {break;}
+                // if you reach the top                     or find an empty space,            stop
+                sequence.push(dec.grid[row+1+stack_height][col]);
+                stack.push(dec.blockGrid[row+1+stack_height][col]);
+                stack_height++;
+              } //end while
+              // Then drop it:
+              DEBUG ? console.log('dropping '+(stack_height+1)+' blocks'): null;
+              for(var q=0; q<stack_height; q++){ // Act on each block in the stack.
+                block_to_drop = stack[q];
+                block_to_drop.animate(blockDropAnim(block_to_drop, how_far));
+                block_to_drop.data('dropping', true);
+                //update the grids:
+                dec.grid[row+1+stack_height - how_far][col] = dec.grid[row+1+stack_height][col]; //"move the number down"
+                dec.grid[row+1+stack_height][col] = -1;
+                dec.blockGrid[row+1+stack_height - how_far][col] = block_to_drop;
+                dec.blockGrid[row][col] = undefined;
+              } //end for
+            } //end dropping if
+          } //end empty space below if
+        } //end block check if
       } //end row loop
     } //end col loop
-
-    //Not implemented: Check each grid spot that was cleared.
-    console.log('blocks were cleared at these locations: ')
-    console.log(arg)
-  } // implementation could be more efficient using the arg, but eh
+    //Not implemented: Check each grid spot that was cleared:
+    // console.log('blocks were cleared at these locations: ')
+    // console.log(arg)
+  } // end if
+  // implementation could be more efficient using the arg, but eh
 
   if (reason=='command'){
     // Check beneath each grid spot which is above the first row and contains a block.
@@ -329,9 +484,7 @@ function gravity(reason, arg){
             // console.log('drop it ' +how_far+ ' spaces')
 
             var block_to_drop = dec.blockGrid[row][col];
-            block_to_drop.animate({
-              'y': block_to_drop.attr('y') + how_far*b_size
-            }, Math.sqrt(2*how_far/dec.G), '<')
+            block_to_drop.animate(blockDropAnim(block_to_drop, how_far))
 
             //update the grids:
             dec.grid[row - how_far][col] = dec.grid[row][col];
@@ -345,7 +498,18 @@ function gravity(reason, arg){
   }
 
   console.log('applied gravity')
+  updateText();
+  //return findClusters();
   return null;
+}
+
+function updateAndFind(){
+  DEBUG = false;
+  DEBUG? console.log('value of "this" in updateAndFind: ') :null;
+  DEBUG? console.log(this) :null;
+  this.data('dropping', false); //When called, the block that was just dropped is passed as "this"
+  updateText();
+  findClusters();
 }
 
 function findClusters(){
@@ -405,17 +569,24 @@ function findClusters(){
 
   if (clusters_found>0){clearBlocks(clear_locs)}
   //return gravity('match', clear_locs)
-  return null
+  return null;
 }
 
+dec.FADE_OUT_TIME = 500; // duration of the fade out animation in ms
+function clearBlockAnim(block){
+  return p.raphael.animation({ 'opacity' : 0 }, dec.FADE_OUT_TIME, function(){block.remove()}.bind(block))
+}
 function clearBlocks(clear_locs){
   console.log('clearing blocks')
+  var block = undefined
   // Clear marked blocks:
   for(var col=0; col<bucket_width; col++){
     for(var row=0; row<bucket_height; row++){
-      if(dec.blockGrid[row][col]){
-        if(dec.blockGrid[row][col].data('cluster') > 0 ) {
-          dec.blockGrid[row][col].remove(); //remove it from the GUI
+      block = dec.blockGrid[row][col];
+      if(block){
+        if(block.data('cluster') > 0 ) {
+          block.animate(clearBlockAnim(block));
+          //block.remove(); //remove it from the GUI
           dec.blockGrid[row][col]=undefined; //remove the reference to it
           dec.grid[row][col] =-1
         } // and it belongs to a non-zero cluster, clear it.
@@ -423,18 +594,80 @@ function clearBlocks(clear_locs){
     } //end row loop
   } //end col loop
   console.log('done clearing blocks')
-  return gravity('match',clear_locs)
+  return gravity('match', clear_locs)
   // return null;
 }
 
+function raiseBlockAnim(block){
+  return p.raphael.animation({ 'y': block.attr('y') - b_size }, Math.sqrt(2/dec.G), '>');
+};
 function raiseGrid(){
-  // Raise all existing rows in the main grid by one.
-  // Move the top line of the "pre" grid into the main grid's bottom row
-  // Raise the bottom line of the "pre grid" to the top
-  // Make a new line on the bottom of the pre grid
+  // 1. Raise all existing rows in the main grid by one.
+  // 2. Move the top line of the "pre" grid into the main grid's bottom row
+  // 3. Raise the bottom line of the "pre grid" to the top
+  // 4. Make a new line on the bottom of the pre grid
 
-  console.log('Raising the grid... (not implemented yet)');
-  
+  // If grid is full, do nothing (return);
+  const DEBUG = false;
+  var block_to_raise;
+
+  console.log('Raising the grid...?');
+
+  for(var col=0;col<bucket_width; col++){ // Check for blocks in the top row.
+    if(dec.grid[bucket_height-1][col] != -1){
+      DEBUG? console.log('max height reached, not raising grid.') : null ;
+      return;
+    }
+  }
+
+  for(var col=0; col<bucket_width; col++){ // Raise existing rows in main grid
+    for(var row=bucket_height-1; row>0; row--){
+      //Starting from the top, set the row's grid and blockGrid values equal to the row below it:
+      dec.grid[row][col] = dec.grid[row-1][col]
+      dec.blockGrid[row][col] = dec.blockGrid[row-1][col]
+
+      //DEBUG? console.log('animating block at row ' +row + ', column ' +col ): null;
+      //And animate each block:
+      block_to_raise = dec.blockGrid[row-1][col]
+      //DEBUG? console.log(block_to_raise) : null;
+      block_to_raise ?  block_to_raise.animate(raiseBlockAnim(block_to_raise)) : null;
+    }
+  }
+  DEBUG ? console.log(1) : null ;
+
+  // Raise top line of pregrid into main grid
+  for(var col=0; col<bucket_width; col++){ // Animate each block:
+    dec.grid[0][col] = dec.preGrid[pre_height-1][col];
+    dec.blockGrid[0][col] = dec.preBlockGrid[pre_height-1][col];
+    block_to_raise = dec.preBlockGrid[pre_height-1][col];
+    block_to_raise.animate(raiseBlockAnim(block_to_raise));
+  }
+  DEBUG ? console.log(2) : null ;
+
+  // Raise the bottom line of the pre grid to the top
+  for(var col=0; col<bucket_width; col++){ // Animate each block:
+    dec.preGrid[pre_height-1][col] = dec.preGrid[0][col]
+    dec.preBlockGrid[pre_height-1][col] = dec.preBlockGrid[0][col]
+    block_to_raise = dec.preBlockGrid[0][col];
+    block_to_raise.animate(raiseBlockAnim(block_to_raise));
+  }
+  DEBUG ? console.log(3) : null ;
+
+  // Make a new line on the bottom of the pre grid:
+  for (var col=0; col<bucket_width; col++){ //column loop
+    colorNum = randInt(dec.NUM_COLORS)
+    newBlock = p.rect(MARGIN + col*b_size, MARGIN + (bucket_height + pre_height - 1)*b_size,
+                          b_size, b_size).attr({'fill': dec.COLORS[colorNum]})
+    dec.preGrid[0][col]=colorNum;
+    dec.preBlockGrid[0][col]=newBlock;
+    //if(i==0){console.log('adding type ' + colorNum + ' block to column ' + i + ' of pre...')}
+  }
+  pre.toFront();
+  DEBUG ? console.log(4) : null ;
+
+  updateText();
+
+  return findClusters();
 }
 
 dec.keycodes = {
@@ -528,7 +761,7 @@ $(window).keydown(function(event){
       }
       break;
     case "game":
-      try { //try to respond to the keypress appropriately
+      //try { //try to respond to the keypress appropriately
         switch(event.keyCode){
           case 81: //q  (left + up)
           case 69: //e  (right + up)
@@ -568,10 +801,10 @@ $(window).keydown(function(event){
             // tab = 9
             break;
         }
-      }
-      catch(err){ console.log('error was thrown: ' + err); }
+      //} //end try
+      //catch(err){ console.log('error was thrown: ' + err); }
       break;
     default:
-      ;
+      break;
   }
 });
