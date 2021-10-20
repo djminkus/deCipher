@@ -1,9 +1,8 @@
 // Similar to a few other match-3 games. (Pokemon Puzzle League / Tetris Attack) But simple.
+// Uses Raphael.js for SVG graphics
 console.log('reset..')
-dec = {} //catcher object for this game (to prevent global vars) .
+dec = {} //catcher object for this game (to prevent lots of global vars) .
 dec.mode = 'game'
-
-
 
 W = 600 // width
 H = 800 // height
@@ -50,6 +49,34 @@ dec.grid = [[-1, -1, -1, -1, -1, -1], //bottom row (yes it's upside-down)
             [-1, -1, -1, -1, -1, -1]];
 // -1 for no block, 0 for red, 1 yellow, 2 green, 3 blue, 4 purple
 // dec.grid[row][column] is syntax
+
+function getColorFromNumber(number){
+  var color = ''
+  switch(number){
+    case -1:
+      color = 'n/a'
+      break;
+    case 0:
+      color = 'red'
+      break;
+    case 1:
+      color = 'yel'
+      break;
+    case 2:
+      color = 'grn'
+      break;
+    case 3:
+      color = 'blu'
+      break;
+    case 4:
+      color = 'pur'
+      break;
+    default:
+      console.log('unexpected case in getColorFromNumber function');
+      break;
+  }
+  return color;
+}
 
 // More general syntax that allows bucket dimensions to be changed quickly above (not tested):
 // dec.grid = []
@@ -220,9 +247,51 @@ function moveCursor(dir){ //move the cursor and update its data
   }
 }
 
+// DEBUGGING GRID SECTION
+// "Grid" of Raphael elements:
+dec.textGrid = [['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'], //bottom row (yes, it's upside-down)
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
+['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined']]
+function showVals(){ // Initially populate the debug grid with strings
+  for(var col=0; col<bucket_width; col++){
+    for(var row=0; row<bucket_height; row++){
+      var color_number = dec.grid[row][bucket_width-1-col];
+      var color_string = getColorFromNumber(color_number)
+
+      var textEl = p.text(MARGIN + (bucket_width - col-.5)*b_size , MARGIN + (bucket_height-row-.5)*b_size, color_string);
+      textEl.attr({'stroke':'white'})
+      dec.textGrid[row][col] = textEl;
+    }
+  }
+  return null;
+};
+showVals();
+function updateDebugGrid(){ // Update the strings in the debug grid.
+  for(var col=0; col<bucket_width; col++){
+    for(var row=0; row<bucket_height; row++){
+      textEl = dec.textGrid[row][col]
+      var color_number = dec.grid[row][bucket_width-1-col];
+      var color_string = getColorFromNumber(color_number)
+      textEl.attr({'text': color_string});
+      textEl.toFront();
+    }
+  }
+  return null;
+}
+
+// Swap blocks. Results in calls to gravity() and findClusters
 function swapBlocks(){
   console.log('- swapping blocks -')
-  const DEBUG = false;
+  const DEBUG = false; //set to true to debug this function (get more console output)
 
   //Get the colors of the blocks
   left_color_num = dec.grid[cursor.data('left')[1]][cursor.data('left')[0]]
@@ -242,6 +311,8 @@ function swapBlocks(){
   if (right_block) { right_block.transform('...t'+(-1*b_size)+",0")}
   DEBUG ? console.log('something') : null;
 
+  //   If at least one block is being moved,
+  // update the grids, maybe apply gravity, and call findClusters:
   if (left_block || right_block){
     //update the color grid
     dec.grid[cursor.data('left')[1]][cursor.data('left')[0]] = right_color_num
@@ -251,8 +322,9 @@ function swapBlocks(){
     dec.blockGrid[cursor.data('left')[1]][cursor.data('left')[0]] = right_block
     dec.blockGrid[cursor.data('right')[1]][cursor.data('right')[0]] = left_block
 
-    if( left_block ? !right_block : right_block ) { // XOR operator. If only one block is moved, apply gravity.
-      //Figure out which block was empty:
+    // If only one block is moved, apply gravity.
+    if( left_block ? !right_block : right_block ) { // XOR operator.
+      // Figure out which block was empty:
       if(!left_block){var empty = 'left'}
       else{var empty= 'right' }
 
@@ -260,46 +332,13 @@ function swapBlocks(){
     }
 
     findClusters();
-  } //If at least one block is being moved, update the grids and call clearBlocks(): (codepen)
-  updateText()
+  }
+  updateDebugGrid()
   console.log('- blocks swapped -')
   //  both_empty = (left_color_num == -1 && right_color_num == -1);
 }
 
-dec.textGrid = [['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'], //bottom row (yes it's upside-down)
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined']]
-function showVals(){
-  for(var col=0; col<bucket_width; col++){
-    for(var row=0; row<bucket_height; row++){
-      var textEl = p.text(MARGIN + (bucket_width - col-.5)*b_size , MARGIN + (bucket_height-row-.5)*b_size, dec.grid[row][bucket_width-1-col]);
-      textEl.attr({'stroke':'white'})
-      dec.textGrid[row][col] = textEl;
-    }
-  }
-  return null;
-};
-showVals();
-function updateText(){
-  for(var col=0; col<bucket_width; col++){
-    for(var row=0; row<bucket_height; row++){
-      textEl = dec.textGrid[row][col]
-      textEl.attr({'text': dec.grid[row][bucket_width-1-col]});
-      textEl.toFront();
-    }
-  }
-  return null;
-}
-
+// Given block and distance, return Raph anim obj
 function blockDropAnim(block, distance){
   const DEBUG = true;
   var self = this;
@@ -317,10 +356,13 @@ function blockDropAnim(block, distance){
   DEBUG? console.log('anim made.') : null;
   return anim;
 };
+
+// Apply "gravity" to the playing area.
 function gravity(reason, arg){
   console.log('applying gravity because ' + reason)
   const DEBUG = true;
-  // Possible reasons are 'swap' and 'match'.
+  // Possible reasons are 'swap', 'match', and 'command'.
+  // "arg" usage depends on reason:
     // For swap, pass 'left' if the left space was empty,
     //   and 'right' if the right space was empty.
     // For match, pass the locations of the cleared blocks. (see clear_locs in findClusters)
@@ -432,7 +474,7 @@ function gravity(reason, arg){
               // First build the stack:
               var stack_height = 0 // how many additional blocks are above the one being dropped
               var sequence = [] // The sequence of numbers representing the blocks' colors
-              var stack = [] // The actual sequence of blocks
+              var stack = [] // The visual stack of blocks (raph elements)
               while(dec.grid[row+1+stack_height][col]){
                 if (row+1+stack_height == bucket_height || dec.grid[row+1+stack_height][col] ==-1) {break;}
                 // if you reach the top                     or find an empty space,            stop
@@ -498,20 +540,22 @@ function gravity(reason, arg){
   }
 
   console.log('applied gravity')
-  updateText();
+  updateDebugGrid();
   //return findClusters();
   return null;
 }
 
+// Update debug grid and find matching clusters:
 function updateAndFind(){
-  DEBUG = false;
+  DEBUG = false; // Warning: might need to add "var" here
   DEBUG? console.log('value of "this" in updateAndFind: ') :null;
   DEBUG? console.log(this) :null;
   this.data('dropping', false); //When called, the block that was just dropped is passed as "this"
-  updateText();
+  updateDebugGrid();
   findClusters();
 }
 
+// Find matching clusters. If any are found, call clearBlocks.
 function findClusters(){
   console.log('finding matches/clusters')
   // Check the grid for lines ('clusters') of 3 or more matching blocks.
@@ -665,7 +709,7 @@ function raiseGrid(){
   pre.toFront();
   DEBUG ? console.log(4) : null ;
 
-  updateText();
+  updateDebugGrid();
 
   return findClusters();
 }
