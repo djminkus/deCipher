@@ -1,5 +1,6 @@
 // Similar to a few other match-3 games. (Pokemon Puzzle League / Tetris Attack) But simple.
 // Uses Raphael.js for SVG graphics
+// See also: https://github.com/panel-attack/panel-attack
 console.log('reset..')
 dec = {} //catcher object for this game (to prevent lots of global vars) .
 dec.mode = 'game'
@@ -8,10 +9,10 @@ W = 600 // width
 H = 800 // height
 p = new Raphael("raphCon", W, H)
 
-bg = p.rect(0,0, W, H).attr({'fill':'#111111'})
+//bg = p.rect(0,0, W, H).attr({'fill':'#111111'})
+bg = p.image('images/background_final.jpg',0,0,W,H)
 
 b_size = 50; //block size
-
 
 rip = 'images/' // rune image path base
 rune_image_paths = {
@@ -24,7 +25,7 @@ rune_image_paths = {
 
 // test for image load:
 rune_images = {
-  "red": p.image("images/red rune.jpg", 5, 5, b_size, b_size)
+  "red": p.image(rune_image_paths['red'], 5, 5, b_size, b_size)
 }
 
 // bucket = p.path("M0,0 L10, 10").attr({'stroke':'white'})
@@ -38,6 +39,7 @@ pre_height = 2
 dec.DEBUG = true;
 
 dec.COLORS = ['red', '#dddd00','#22ff22','#0099ff','#ff33ff']
+dec.COLOR_NAMES = ['red', 'yellow', 'green', 'blue', 'purple']
 dec.NUM_COLORS = 5 // How many colors to choose from
 //                yellow     green    blue       purple
 
@@ -142,7 +144,7 @@ function makeBlocks(){
 
     for (var j=0; j<column_pops[i]; j++){ //row loop  (Main grid)
       DEBUG? console.log("Making row " + j +" in column " + i) : null;
-      newBlock = p.rect(MARGIN + i*b_size, MARGIN + (11-j)*b_size, b_size, b_size)
+      //newBlock = p.rect(MARGIN + i*b_size, MARGIN + (11-j)*b_size, b_size, b_size)
 
       // Pick a new color if this would make a cluster.
       // TODO: FIND A WAY TO CHECK BOTH ROWS AND COLUMNS. nested while?
@@ -179,7 +181,8 @@ function makeBlocks(){
         DEBUG? console.log('rc: ' + colCheck) : null;
       }
 
-      newBlock.attr({'fill': dec.COLORS[colorNum]});
+      newBlock = p.image(rune_image_paths[dec.COLOR_NAMES[colorNum]], MARGIN + i*b_size, MARGIN + (11-j)*b_size, b_size, b_size)
+      //newBlock.attr({'fill': dec.COLORS[colorNum]});
       dec.grid[j][i]=colorNum;
       dec.blockGrid[j][i]=newBlock;
       //if(i==0){console.log('adding type ' + colorNum + ' block to column 0......')}
@@ -190,8 +193,11 @@ function makeBlocks(){
     // Row loop (preGrid)
     for (var j=0; j<pre_height; j++){
       colorNum = randInt(dec.NUM_COLORS)
-      newBlock = p.rect(MARGIN + i*b_size, MARGIN + (bucket_height + pre_height - (j+1))*b_size,
-                            b_size, b_size).attr({'fill': dec.COLORS[colorNum]})
+      // newBlock = p.rect(MARGIN + i*b_size, MARGIN + (bucket_height + pre_height - (j+1))*b_size,
+      //                       b_size, b_size).attr({'fill': dec.COLORS[colorNum]})
+      newBlock = p.image(rune_image_paths[dec.COLOR_NAMES[colorNum]], MARGIN + i*b_size, MARGIN + (bucket_height + pre_height - (j+1))*b_size,
+                            b_size, b_size)
+
       dec.preGrid[j][i]=colorNum;
       dec.preBlockGrid[j][i]=newBlock;
       //if(i==0){console.log('adding type ' + colorNum + ' block to column ' + i + ' of pre...')}
@@ -303,8 +309,8 @@ function updateDebugGrid(){ // Update the strings in the debug grid.
 
 // Swap blocks. Results in calls to gravity() and findClusters
 function swapBlocks(){
-  console.log('- swapping blocks -')
   const DEBUG = false; //set to true to debug this function (get more console output)
+  DEBUG ? console.log('- swapping blocks -') : null;
 
   //Get the colors of the blocks
   left_color_num = dec.grid[cursor.data('left')[1]][cursor.data('left')[0]]
@@ -348,7 +354,8 @@ function swapBlocks(){
   }
   updateDebugGrid()
 
-  return console.log('- finished swapBlocks function -')
+  DEBUG? console.log('- finished swapBlocks function -') : null;
+  return null
 }
 
 // Given block and distance, return Raph anim obj
@@ -453,6 +460,14 @@ function gravity(reason, arg){
     } // block(s) tableclothed. Drop it/them. (codepen)
   }
 
+  /*
+  //new dropping algorithm:
+  if(reason=='match'){
+    // Drop each stack above a space that's been cleared:
+  }
+  */
+
+  // old dropping algorithm:
   if(reason == 'match'){
     for(var col=0; col<bucket_width; col++){
       for(var row=1; row<bucket_height; row++){
@@ -461,8 +476,10 @@ function gravity(reason, arg){
             // Find how far to drop it:
             var how_far = 0;
             var go = true;
+            var another_var = 0
             while(go){ // find how far to drop it:
               how_far++;
+
               if(row-how_far == 0) {go = false; } // Stop if you reach the bottom
               next_spot = dec.grid[row - how_far][col] // Color value of next spot downward
               if (next_spot !== -1) { // stop if you find a block
@@ -483,30 +500,51 @@ function gravity(reason, arg){
               dec.blockGrid[row - how_far][col] = block_to_drop;
               dec.blockGrid[row][col] = undefined;
 
-              // Then drop the blocks above it the same amount.
-              // First build the stack:
+              // Then drop the blocks above it the same amount:
+
+              // First build the sequence and stack:
               var stack_height = 0 // how many additional blocks are above the one being dropped
               var sequence = [] // The sequence of numbers representing the blocks' colors
               var stack = [] // The visual stack of blocks (raph elements)
-              while(dec.grid[row+1+stack_height][col]){
-                if (row+1+stack_height == bucket_height || dec.grid[row+1+stack_height][col] == -1) {break;}
+
+              while(dec.grid[row + 1 + stack_height][col]){
+                if (row + 1 + stack_height == bucket_height || dec.grid[row + 1 + stack_height][col] == -1) {break;}
                 // if you reach the top                     or find an empty space,            stop
-                sequence.push(dec.grid[row+1+stack_height][col]);
+                sequence.push(  dec.grid[row+1+stack_height][col]);
                 stack.push(dec.blockGrid[row+1+stack_height][col]);
                 stack_height++;
+                DEBUG ? console.log('stack_height: ' +stack_height):null;
               } //end while
-              // Then drop it:
+              DEBUG ? console.log('SEQUENCE: '): null;
+              DEBUG ? console.log(sequence): null;
+              DEBUG ? console.log('STACK: '): null;
+              DEBUG ? console.log(stack): null;
+
+              // Then drop the sequence and stack:
               DEBUG ? console.log('dropping '+(stack_height+1)+' blocks'): null;
               for(var q=0; q<stack_height; q++){ // Act on each block in the stack.
+                num_to_drop = sequence[q]
                 block_to_drop = stack[q];
                 block_to_drop.animate(blockDropAnim(block_to_drop, how_far));
                 block_to_drop.data('dropping', true);
+
                 //update the grids:
-                dec.grid[row+1+stack_height - how_far][col] = sequence[q]; //"move the number down"
-                dec.grid[row+1+stack_height][col] = -1;
-                dec.blockGrid[row+1+stack_height - how_far][col] = block_to_drop;
-                dec.blockGrid[row][col] = undefined;
+                dec.grid[     row + stack_height - how_far][col] = num_to_drop; //"move the number down"
+                //dec.grid[     row + q][col] = -1;
+                dec.blockGrid[row + stack_height - how_far][col] = block_to_drop;
+                dec.blockGrid[row + q][col] = undefined;
+
+                // dec.grid[     row - how_far][col] = dec.grid[row][col];
+                // dec.grid[     row][col] = -1;
+                // dec.blockGrid[row - how_far][col] = block_to_drop;
+                // dec.blockGrid[row][col] = undefined;
               } //end for
+              // Clear out the old numbers:
+              for(var q=0; q<how_far; q++){
+                dec.grid[row][col] = -1
+              }
+              // Account for the +1:
+
             } //end dropping if
           } //end empty space below if
         } //end block check if
@@ -580,45 +618,49 @@ function findClusters(){
   var clusters_found = 0
   for(var col=0; col<bucket_width; col++){
     for(var row=0; row<bucket_height; row++){
-      var marked = false;
-      color_num = dec.grid[row][col]
-      if (color_num !== -1){
-        if (DEBUG){console.log('Checking block: row ' +row+ ', col ' +col+', color_num '+color_num+ ')')}
-        var how_many_r = 0; // how many matching blocks found to the right
-        var how_many_u = 0; // how many matching blocks found upwards
-        // We're starting from the bottom left,
-        //   and will read rightward through the row, then shift up a row, etc.
-        if(col+1 !== bucket_width){
-          while(col + 1 < bucket_width &&
-                color_num == dec.grid[row][col+ how_many_r +1] ){ how_many_r++ }
-        } // Find matches right, but only if we're not at the last column.
-        //console.log('hurr')
-        if(row+1 !== bucket_height){
-          while(row+1 < bucket_height &&
-                color_num == dec.grid[row + how_many_u + 1][col] ){ how_many_u++ }
-        } // Find matches up, but only if we're not at the last row
-        if(dec.blockGrid[row][col].data('cluster') !== undefined){marked=true} //For code readability, check if block is already marked.
-        if (how_many_r>1){ //we have a cluster. Mark it and the matching blocks to the right.
-          if (!marked){clusters_found++;} //This hasn't been marked yet, so it belongs to a new cluster.
-          for(var a=0; a<=how_many_r; a++){
-            if(DEBUG){console.log('here r')}
-            dec.blockGrid[row][col+a].data('cluster', clusters_found)
-            if(DEBUG){console.log('here? r')}
-            clear_locs.push([row,col+a])
+      try {
+        var marked = false;
+        color_num = dec.grid[row][col]
+        if (color_num !== -1){ // If there's a block here, check for matches.
+          if (DEBUG){console.log('Checking block: row ' +row+ ', col ' +col+', color_num '+color_num+ ')')}
+          var how_many_r = 0; // How many matching blocks found to the right
+          var how_many_u = 0; // How many matching blocks found upwards
+          // We're starting from the bottom left,
+          //   and will read rightward through the row, then shift up a row, etc.
+          if(col+1 !== bucket_width){
+            while(col + 1 < bucket_width &&
+                  color_num == dec.grid[row][col+ how_many_r +1] ){ how_many_r++ }
+          } // Find matches right, but only if we're not at the last column.
+          //console.log('hurr')
+          if(row+1 !== bucket_height){
+            while(row+1 < bucket_height &&
+                  color_num == dec.grid[row + how_many_u + 1][col] ){ how_many_u++ }
+          } // Find matches up, but only if we're not at the last row
+          if(dec.blockGrid[row][col].data('cluster') !== undefined){marked=true} //For code readability, check if block is already marked.
+          if (how_many_r>1){ // We have a cluster. Mark it and the matching blocks to the right.
+            if (!marked){clusters_found++;} //This hasn't been marked yet, so it belongs to a new cluster.
+            for(var a=0; a<=how_many_r; a++){
+              if(DEBUG){console.log('here r')}
+              dec.blockGrid[row][col+a].data('cluster', clusters_found)
+              if(DEBUG){console.log('here? r')}
+              clear_locs.push([row,col+a])
+            }
+            marked = true;
           }
-          marked = true;
+          if (how_many_u>1){ // We have a cluster. Mark it and the matching blocks above it.
+            if (!marked){clusters_found++;} // This hasn't been marked yet, so it belongs to a new cluster.
+            for(var a=0; a<=how_many_u; a++){
+              if(DEBUG){console.log('here u')}
+              dec.blockGrid[row+a][col].data('cluster', clusters_found) // Give it its cluster
+              if(DEBUG){console.log('here? u')}
+              clear_locs.push([row+a,col])
+            }
+            marked = true;
+          }
         }
-        if (how_many_u>1){
-          if (!marked){clusters_found++;} //This hasn't been marked yet, so it belongs to a new cluster.
-          for(var a=0; a<=how_many_u; a++){
-            if(DEBUG){console.log('here u')}
-            dec.blockGrid[row+a][col].data('cluster', clusters_found) // Give it its cluster
-            if(DEBUG){console.log('here? u')}
-            clear_locs.push([row+a,col])
-          }
-          marked = true;
-        } //we have a cluster. Mark it and the matching blocks above it.
-      } //If there's a block here, check for matches.
+      } // end try
+      catch(e){ console.log(e) }
+
     } //end row loop
   } //end col loop
   console.log(''+clusters_found+' clusters found')
@@ -869,3 +911,5 @@ $(window).keydown(function(event){
       break;
   }
 });
+
+//var raise_interval = setInterval(raiseGrid, 15000);
