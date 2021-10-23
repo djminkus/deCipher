@@ -10,7 +10,7 @@ H = 800 // height
 p = new Raphael("raphCon", W, H)
 
 //bg = p.rect(0,0, W, H).attr({'fill':'#111111'})
-bg = p.image('images/background_final.jpg',0,0,W,H)
+bg = p.image('images/background_final.jpg',0,0,W/2+50,750)
 
 b_size = 50; //block size
 
@@ -24,9 +24,9 @@ rune_image_paths = {
 }
 
 // test for image load:
-rune_images = {
-  "red": p.image(rune_image_paths['red'], 5, 5, b_size, b_size)
-}
+// rune_images = {
+//   "red": p.image(rune_image_paths['red'], 5, 5, b_size, b_size)
+// }
 
 // bucket = p.path("M0,0 L10, 10").attr({'stroke':'white'})
 
@@ -44,8 +44,8 @@ dec.NUM_COLORS = 5 // How many colors to choose from
 //                yellow     green    blue       purple
 
 MARGIN = 25
-bucket = p.rect(MARGIN, MARGIN, bucket_width*b_size,
-               bucket_height*b_size).attr({'fill':'#222222'})
+// bucket = p.rect(MARGIN, MARGIN, bucket_width*b_size,
+//                bucket_height*b_size).attr({'fill':'#222222'})
 
 dec.G = .00001 // gravity factor
 
