@@ -393,10 +393,10 @@ function gravity(reason, arg){
   //   If empty space is found, do stuff
   var row_num = cursor.data('left')[1]; //row number of cursor
   if (reason == 'swap') {
-    DEBUG? console.log('row_num: ' + row_num ) :null;
+    // DEBUG? console.log('row_num: ' + row_num ) :null;
     // Left side of cursor was at cursor.data('left')
     var empty = arg; //'left' or 'right'
-    DEBUG? console.log('empty: ' + empty) :null;
+    // DEBUG? console.log('empty: ' + empty) :null;
     var was_empty = cursor.data(empty);
     if (row_num > 0){ //If not on the bottom row, check for empty space beneath:
       if (dec.grid[was_empty[1] - 1][was_empty[0]] == -1) { //empty space below the freshly swapped block. Drop it.
@@ -529,22 +529,16 @@ function gravity(reason, arg){
                 block_to_drop.data('dropping', true);
 
                 //update the grids:
-                dec.grid[     row + stack_height - how_far][col] = num_to_drop; //"move the number down"
-                //dec.grid[     row + q][col] = -1;
-                dec.blockGrid[row + stack_height - how_far][col] = block_to_drop;
-                dec.blockGrid[row + q][col] = undefined;
+                dec.grid[     row - how_far + (q+1)][col] = num_to_drop; //"move the number down"
+                dec.grid[     row + (q+1)][col] = -1;
+                dec.blockGrid[row - how_far + (q+1)][col] = block_to_drop;
+                dec.blockGrid[row + (q+1)][col] = undefined;
 
                 // dec.grid[     row - how_far][col] = dec.grid[row][col];
                 // dec.grid[     row][col] = -1;
                 // dec.blockGrid[row - how_far][col] = block_to_drop;
                 // dec.blockGrid[row][col] = undefined;
-              } //end for
-              // Clear out the old numbers:
-              for(var q=0; q<how_far; q++){
-                dec.grid[row][col] = -1
-              }
-              // Account for the +1:
-
+              } // Finished acting on each extra block in stack
             } //end dropping if
           } //end empty space below if
         } //end block check if
