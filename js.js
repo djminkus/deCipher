@@ -69,7 +69,7 @@ function getColorFromNumber(number){
   var color = ''
   switch(number){
     case -1:
-      color = 'n/a'
+      color = 'n'
       break;
     case 0:
       color = 'red'
