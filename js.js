@@ -695,8 +695,9 @@ function clearBlocks(clear_locs){
   // return null;
 }
 
+dec.raiseTime = Math.sqrt(2/dec.G)
 function raiseBlockAnim(block){
-  return p.raphael.animation({ 'y': block.attr('y') - b_size }, Math.sqrt(2/dec.G), '>');
+  return p.raphael.animation({ 'y': block.attr('y') - b_size }, dec.raiseTime, '>');
 };
 function raiseGrid(){
   // 1. Raise all existing rows in the main grid by one.
@@ -704,18 +705,28 @@ function raiseGrid(){
   // 3. Raise the bottom line of the "pre grid" to the top
   // 4. Make a new line on the bottom of the pre grid
 
-  // If grid is full, do nothing (return);
   const DEBUG = false;
   var block_to_raise;
 
   console.log('Raising the grid...?');
 
+  // If grid is full, do nothing (return):
   for(var col=0;col<bucket_width; col++){ // Check for blocks in the top row.
     if(dec.grid[bucket_height-1][col] != -1){
       DEBUG? console.log('max height reached, not raising grid.') : null ;
       return;
     }
   }
+
+  // If grid is already rising, do nothing (return):
+  if(dec.gridRising || dec.blockDropping){
+    console.log('grid already rising.')
+    return;
+  }
+
+  // Otherwise, update property state and prep to clear it when finished:
+  dec.gridRising = true
+  setInterval(function(){dec.gridRising=false;}, dec.raiseTime+100)
 
   for(var col=0; col<bucket_width; col++){ // Raise existing rows in main grid
     for(var row=bucket_height-1; row>0; row--){
