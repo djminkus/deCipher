@@ -10,7 +10,10 @@ H = 800 // height
 p = new Raphael("raphCon", W, H)
 
 //bg = p.rect(0,0, W, H).attr({'fill':'#111111'})
-bg = p.image('images/background_final.jpg',0,0,W/2+50,750)
+MAIN_WIDTH = W/2 + 30 // width of main pane
+HEIGHT = 740
+bg = p.image('images/background_final.jpg', 0,0, MAIN_WIDTH, HEIGHT)
+sidebar = p.rect(MAIN_WIDTH, 0, 360 - MAIN_WIDTH, HEIGHT).attr({'fill':'white'})
 
 b_size = 50; //block size
 
@@ -32,9 +35,9 @@ rune_image_paths = {
 
 // Bucket is 12 blocks high by 6 wide usually
 // Plus one row of upcoming blocks (maybe two with special effects?)
-bucket_width = 6   //in blocks
-bucket_height = 12
-pre_height = 2
+bucket_width = 6   //in blocks -- not fully implemented
+bucket_height = 10
+pre_height = 1
 
 dec.DEBUG = true;
 
@@ -43,25 +46,17 @@ dec.COLOR_NAMES = ['red', 'yellow', 'green', 'blue', 'purple']
 dec.NUM_COLORS = 5 // How many colors to choose from
 //                yellow     green    blue       purple
 
-MARGIN = 25
+MARGIN = 15
 // bucket = p.rect(MARGIN, MARGIN, bucket_width*b_size,
 //                bucket_height*b_size).attr({'fill':'#222222'})
 
 dec.G = .00001 // gravity factor
 
 // grid holds the numbers of the colors of the blocks:
-dec.grid = [[-1, -1, -1, -1, -1, -1], //bottom row (yes it's upside-down)
-            [-1, -1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1, -1],
-            [-1, -1, -1, -1, -1, -1]];
+dec.grid = [];
+for (var i=0; i<bucket_height; i++){
+  dec.grid.push([-1, -1, -1, -1, -1, -1]);
+}
 // -1 for no block, 0 for red, 1 yellow, 2 green, 3 blue, 4 purple
 // dec.grid[row][column] is syntax
 
@@ -104,24 +99,17 @@ function getColorFromNumber(number){
 // }
 
 // blockGrid holds the actual references to the blocks.
-dec.blockGrid =[ [undefined, undefined, undefined, undefined, undefined, undefined], //bottom row (yes it's upside-down)
-                [undefined, undefined, undefined, undefined, undefined, undefined],
-                [undefined, undefined, undefined, undefined, undefined, undefined],
-                [undefined, undefined, undefined, undefined, undefined, undefined],
-                [undefined, undefined, undefined, undefined, undefined, undefined],
-                [undefined, undefined, undefined, undefined, undefined, undefined],
-                [undefined, undefined, undefined, undefined, undefined, undefined],
-                [undefined, undefined, undefined, undefined, undefined, undefined],
-                [undefined, undefined, undefined, undefined, undefined, undefined],
-                [undefined, undefined, undefined, undefined, undefined, undefined],
-                [undefined, undefined, undefined, undefined, undefined, undefined],
-                [undefined, undefined, undefined, undefined, undefined, undefined]]
+dec.blockGrid = [];
+for (var i=0; i<bucket_height; i++){
+  dec.blockGrid.push([undefined, undefined, undefined, undefined, undefined, undefined]);
+}
 
-dec.preGrid = [ [-1, -1, -1, -1, -1, -1], //bottom row (yes it's visually upside-down here)
-                [-1, -1, -1, -1, -1, -1]] //
-
-dec.preBlockGrid =[ [undefined, undefined, undefined, undefined, undefined, undefined], //bottom row (yes it's upside-down)
-                    [undefined, undefined, undefined, undefined, undefined, undefined]]
+dec.preGrid = [];
+dec.preBlockGrid = [];
+for (var i=0; i<pre_height; i++){
+  dec.preGrid.push([-1, -1, -1, -1, -1, -1]);
+  dec.preBlockGrid.push([undefined, undefined, undefined, undefined, undefined, undefined]);
+}
 
 function randInt(ceil){ //returns random int from 0 to ceil-1
   return Math.floor(Math.random() * Math.floor(ceil))
@@ -217,7 +205,7 @@ function makeBlocks(){
 makeBlocks(); //create initial blocks with RNG
 
 pre = p.rect(MARGIN, MARGIN + bucket_height*b_size,
-             bucket_width*b_size, 2*b_size)
+             bucket_width*b_size, pre_height*b_size)
 pre.attr({'stroke':'white', 'fill':'black', 'opacity':.7})
 
 cursor = p.rect(MARGIN+2*b_size, MARGIN+6*b_size,
@@ -268,18 +256,10 @@ function moveCursor(dir){ //move the cursor and update its data
 
 // DEBUGGING GRID SECTION
 // "Grid" of Raphael elements:
-dec.textGrid = [['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'], //bottom row (yes, it's upside-down)
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined'],
-['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined']]
+dec.textGrid = []
+for(var i=0; i<bucket_height; i++){
+  dec.textGrid.push(['undefined', 'undefined', 'undefined', 'undefined', 'undefined', 'undefined']);
+}
 function showVals(){ // Initially populate the debug grid with strings
   for(var col=0; col<bucket_width; col++){
     for(var row=0; row<bucket_height; row++){
@@ -371,10 +351,11 @@ function blockDropAnim(block, distance){
   // DEBUG? console.log('value of "DEBUG" in blockDropAnim: ') :null;
   // DEBUG? console.log(DEBUG) :null;
   // Returns a Raphael animation for the passed block to drop the passed distance (in blocks):
+  const time = Math.sqrt(2*distance/dec.G)
   const anim =  p.raphael.animation({ 'y': block.attr('y') + distance*b_size },
-                                      Math.sqrt(2*distance/dec.G), '<', updateAndFind.bind(block));
+                                      time, '<', updateAndFind.bind(block));
   DEBUG? console.log('anim made.') : null;
-  return anim;
+  return [anim, time];
 };
 
 // Apply "gravity" to the playing area.
@@ -415,13 +396,18 @@ function gravity(reason, arg){
         // console.log('drop it ' +how_far+ ' spaces')
 
         var block_to_drop = dec.blockGrid[was_empty[1]][was_empty[0]];
-        block_to_drop.animate(blockDropAnim(block_to_drop, how_far))
+        var returns = blockDropAnim(block_to_drop, how_far)
+        var anim = returns[0]
+        var time = returns[1]
+        block_to_drop.animate(anim)
 
-        //update the grids:
-        dec.grid[was_empty[1] - how_far][was_empty[0]] = dec.grid[was_empty[1]][was_empty[0]];
-        dec.grid[was_empty[1]][was_empty[0]] = -1;
-        dec.blockGrid[was_empty[1] - how_far][was_empty[0]] = block_to_drop;
-        dec.blockGrid[was_empty[1]][was_empty[0]] = undefined;
+        // After the animation is done, update the grids:
+        setTimeout(function(){
+          dec.grid[was_empty[1] - how_far][was_empty[0]] = dec.grid[was_empty[1]][was_empty[0]];
+          dec.grid[was_empty[1]][was_empty[0]] = -1;
+          dec.blockGrid[was_empty[1] - how_far][was_empty[0]] = block_to_drop;
+          dec.blockGrid[was_empty[1]][was_empty[0]] = undefined;
+        }.bind(this), time);
       }
     }
 
@@ -445,17 +431,22 @@ function gravity(reason, arg){
       } // find how many to drop and collect them in a set!
       for (var i=0; i<blocks_to_drop.length; i++){
         block_to_drop = blocks_to_drop[i]
-        block_to_drop.animate(blockDropAnim(block_to_drop, 1))
+        var returns = blockDropAnim(block_to_drop, 1)
+        var anim = returns[0]
+        var time = returns[1]
+        block_to_drop.animate(anim)
 
-        // Update the grids:
-        dec.grid[was_full[1]+i][was_full[0]] = dec.grid[was_full[1]+i+1][was_full[0]];
-        // new spot's number = old spot's number
+        // Once animation is complete, update the grids:
+        setTimeout(function(){
+          dec.grid[was_full[1]+i][was_full[0]] = dec.grid[was_full[1]+i+1][was_full[0]];
+          // new spot's number = old spot's number
 
-        dec.grid[was_full[1]+i+1][was_full[0]] = -1;
-        // migrate the space up the stack one notch
+          dec.grid[was_full[1]+i+1][was_full[0]] = -1;
+          // migrate the space up the stack one notch
 
-        dec.blockGrid[was_full[1]+i][was_full[0]] = block_to_drop;
-        dec.blockGrid[was_full[1]+i+1][was_full[0]] = undefined;
+          dec.blockGrid[was_full[1]+i][was_full[0]] = block_to_drop;
+          dec.blockGrid[was_full[1]+i+1][was_full[0]] = undefined;
+        }.bind(this), time);
       } // end for
     } // block(s) tableclothed. Drop it/them. (codepen)
   }
@@ -493,12 +484,18 @@ function gravity(reason, arg){
             var block_to_drop = dec.blockGrid[row][col];
             var dropping = block_to_drop.data('dropping')
             if(!dropping){
-              block_to_drop.animate(blockDropAnim(block_to_drop, how_far))
-              // update the grids:
-              dec.grid[row - how_far][col] = dec.grid[row][col];
-              dec.grid[row][col] = -1;
-              dec.blockGrid[row - how_far][col] = block_to_drop;
-              dec.blockGrid[row][col] = undefined;
+              var returns = blockDropAnim(block_to_drop, how_far)
+              var anim = returns[0]
+              var time = returns[1]
+              block_to_drop.animate(anim)
+
+              // Once anim is done, update the grids:
+              setTimeout(function(){
+                dec.grid[row - how_far][col] = dec.grid[row][col];
+                dec.grid[row][col] = -1;
+                dec.blockGrid[row - how_far][col] = block_to_drop;
+                dec.blockGrid[row][col] = undefined;
+              }.bind(this), time)
 
               // Then drop the blocks above it the same amount:
 
@@ -525,14 +522,20 @@ function gravity(reason, arg){
               for(var q=0; q<stack_height; q++){ // Act on each block in the stack.
                 num_to_drop = sequence[q]
                 block_to_drop = stack[q];
-                block_to_drop.animate(blockDropAnim(block_to_drop, how_far));
+
+                var returns = blockDropAnim(block_to_drop, how_far)
+                var anim = returns[0]
+                var time = returns[1]
+                block_to_drop.animate(anim);
                 block_to_drop.data('dropping', true);
 
-                //update the grids:
-                dec.grid[     row - how_far + (q+1)][col] = num_to_drop; //"move the number down"
-                dec.grid[     row + (q+1)][col] = -1;
-                dec.blockGrid[row - how_far + (q+1)][col] = block_to_drop;
-                dec.blockGrid[row + (q+1)][col] = undefined;
+                // Once anim is done, update the grids:
+                setTimeout(function(){
+                  dec.grid[     row - how_far + (q+1)][col] = num_to_drop; //"move the number down"
+                  dec.grid[     row + (q+1)][col] = -1;
+                  dec.blockGrid[row - how_far + (q+1)][col] = block_to_drop;
+                  dec.blockGrid[row + (q+1)][col] = undefined;
+                }.bind(this), time)
 
                 // dec.grid[     row - how_far][col] = dec.grid[row][col];
                 // dec.grid[     row][col] = -1;
