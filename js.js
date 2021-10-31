@@ -10,12 +10,13 @@ H = 800 // height
 p = new Raphael("raphCon", W, H)
 
 //bg = p.rect(0,0, W, H).attr({'fill':'#111111'})
-MAIN_WIDTH = W/2 + 30 // width of main pane
-HEIGHT = 740
+// MAIN_WIDTH = W/2 + 30 // width of main pane
+MAIN_WIDTH = 360
+HEIGHT = 640
 bg = p.image('images/background_final.jpg', 0,0, MAIN_WIDTH, HEIGHT)
 sidebar = p.rect(MAIN_WIDTH, 0, 360 - MAIN_WIDTH, HEIGHT).attr({'fill':'white'})
 
-b_size = 50; //block size
+b_size = 40; //block size
 
 rip = 'images/' // rune image path base
 rune_image_paths = {
@@ -46,9 +47,27 @@ dec.COLOR_NAMES = ['red', 'yellow', 'green', 'blue', 'purple']
 dec.NUM_COLORS = 5 // How many colors to choose from
 //                yellow     green    blue       purple
 
-MARGIN = 15
+var pixel_bucket_width = bucket_width * b_size
+MARGIN = (MAIN_WIDTH - pixel_bucket_width) / 2
+
+var pixel_bucket_height = (bucket_height + pre_height) * b_size
+Y_MARGIN = (HEIGHT - pixel_bucket_height) / 2
 // bucket = p.rect(MARGIN, MARGIN, bucket_width*b_size,
 //                bucket_height*b_size).attr({'fill':'#222222'})
+
+// Make scoreboard:
+// p.image("images/Score_Lives.jpg", MARGIN, 0, 240, 100)
+// var tester = p.rect(MARGIN, 0, 240, 100)
+
+dec.scoreText = p.text(MARGIN, 20, 'Score:')
+dec.scoreAmtText = p.text(MARGIN+40, 20, '0')
+dec.score = 0;
+dec.updateScore = function(amt){
+  dec.score += amt
+  dec.scoreAmtText.attr({'text':dec.score})
+  console.log('score updated')
+  return;
+}
 
 dec.G = .00001 // gravity factor
 
@@ -169,7 +188,7 @@ function makeBlocks(){
         DEBUG? console.log('rc: ' + colCheck) : null;
       }
 
-      newBlock = p.image(rune_image_paths[dec.COLOR_NAMES[colorNum]], MARGIN + i*b_size, MARGIN + (11-j)*b_size, b_size, b_size)
+      newBlock = p.image(rune_image_paths[dec.COLOR_NAMES[colorNum]], MARGIN + i*b_size, Y_MARGIN + (bucket_height-1-j)*b_size, b_size, b_size)
       //newBlock.attr({'fill': dec.COLORS[colorNum]});
       dec.grid[j][i]=colorNum;
       dec.blockGrid[j][i]=newBlock;
@@ -177,20 +196,21 @@ function makeBlocks(){
       columns[i].push(newBlock); //add block to that column's set.
     } //end row loop
 
-    DEBUG ? console.log('hm'): null;
+    DEBUG ? console.log('main grid filled'): null;
+
     // Row loop (preGrid)
     for (var j=0; j<pre_height; j++){
       colorNum = randInt(dec.NUM_COLORS)
       // newBlock = p.rect(MARGIN + i*b_size, MARGIN + (bucket_height + pre_height - (j+1))*b_size,
       //                       b_size, b_size).attr({'fill': dec.COLORS[colorNum]})
-      newBlock = p.image(rune_image_paths[dec.COLOR_NAMES[colorNum]], MARGIN + i*b_size, MARGIN + (bucket_height + pre_height - (j+1))*b_size,
+      newBlock = p.image(rune_image_paths[dec.COLOR_NAMES[colorNum]], MARGIN + i*b_size, Y_MARGIN + (bucket_height + pre_height - (j+1))*b_size,
                             b_size, b_size)
 
       dec.preGrid[j][i]=colorNum;
       dec.preBlockGrid[j][i]=newBlock;
       //if(i==0){console.log('adding type ' + colorNum + ' block to column ' + i + ' of pre...')}
     }
-    DEBUG? console.log('yay'): null;
+    DEBUG? console.log('preGrid filled'): null;
 
     // OLD CODE (replaced by last paragraph)
     // var newBlock = p.rect(MARGIN + i*b_size, MARGIN + (13)*b_size,
@@ -204,15 +224,15 @@ function makeBlocks(){
 
 makeBlocks(); //create initial blocks with RNG
 
-pre = p.rect(MARGIN, MARGIN + bucket_height*b_size,
+pre = p.rect(MARGIN, Y_MARGIN + bucket_height*b_size,
              bucket_width*b_size, pre_height*b_size)
 pre.attr({'stroke':'white', 'fill':'black', 'opacity':.7})
 
-cursor = p.rect(MARGIN+2*b_size, MARGIN+6*b_size,
+cursor = p.rect(MARGIN+2*b_size, Y_MARGIN+(bucket_height/2)*b_size,
                 2*b_size, b_size)
 cursor.attr({'stroke':'white', 'opacity':1,'stroke-width':3})
-cursor.data('left', [2,5]) //grid coords of left half of cursor
-cursor.data('right',[3,5]) //grid coords of right half of cursor
+cursor.data('left', [2,(bucket_height/2)-1])  // grid coords of left half of cursor
+cursor.data('right',[3,(bucket_height/2)-1])  // grid coords of right half of cursor
 // [0,0] is bottom left. Max is [5, 11]
 
 upString = '...t0,' + (-1 * b_size)
@@ -266,7 +286,7 @@ function showVals(){ // Initially populate the debug grid with strings
       var color_number = dec.grid[row][bucket_width-1-col];
       var color_string = getColorFromNumber(color_number)
 
-      var textEl = p.text(MARGIN + (bucket_width - col-.5)*b_size , MARGIN + (bucket_height-row-.5)*b_size, color_string);
+      var textEl = p.text(MARGIN + (bucket_width - col-.5)*b_size , Y_MARGIN + (bucket_height-row-.5)*b_size, color_string);
       textEl.attr({'stroke':'white'})
       dec.textGrid[row][col] = textEl;
     }
@@ -293,8 +313,10 @@ function swapBlocks(){
   DEBUG ? console.log('- swapping blocks -') : null;
 
   //Get the colors of the blocks
-  left_color_num = dec.grid[cursor.data('left')[1]][cursor.data('left')[0]]
-  right_color_num = dec.grid[cursor.data('right')[1]][cursor.data('right')[0]]
+  var left = cursor.data('left')
+  var right = cursor.data('right')
+  left_color_num = dec.grid[left[1]][left[0]]
+  right_color_num = dec.grid[right[1]][right[0]]
   DEBUG ? console.log('left_color_num: ' +left_color_num) : null;
 
   //Get references to the blocks
@@ -308,7 +330,7 @@ function swapBlocks(){
   // translate the blocks
   if (left_block) { left_block.transform('...t'+b_size+",0")}
   if (right_block) { right_block.transform('...t'+(-1*b_size)+",0")}
-  DEBUG ? console.log('something') : null;
+  DEBUG ? console.log('blocks moved') : null;
 
   //   If at least one block is being moved,
   // update the grids, maybe apply gravity, and call findClusters:
@@ -402,12 +424,12 @@ function gravity(reason, arg){
         block_to_drop.animate(anim)
 
         // After the animation is done, update the grids:
-        setTimeout(function(){
+        // setTimeout(function(){
           dec.grid[was_empty[1] - how_far][was_empty[0]] = dec.grid[was_empty[1]][was_empty[0]];
           dec.grid[was_empty[1]][was_empty[0]] = -1;
           dec.blockGrid[was_empty[1] - how_far][was_empty[0]] = block_to_drop;
           dec.blockGrid[was_empty[1]][was_empty[0]] = undefined;
-        }.bind(this), time);
+        // }.bind(this), time);
       }
     }
 
@@ -437,7 +459,7 @@ function gravity(reason, arg){
         block_to_drop.animate(anim)
 
         // Once animation is complete, update the grids:
-        setTimeout(function(){
+        // setTimeout(function(){
           dec.grid[was_full[1]+i][was_full[0]] = dec.grid[was_full[1]+i+1][was_full[0]];
           // new spot's number = old spot's number
 
@@ -446,7 +468,7 @@ function gravity(reason, arg){
 
           dec.blockGrid[was_full[1]+i][was_full[0]] = block_to_drop;
           dec.blockGrid[was_full[1]+i+1][was_full[0]] = undefined;
-        }.bind(this), time);
+        // }.bind(this), time);
       } // end for
     } // block(s) tableclothed. Drop it/them. (codepen)
   }
@@ -489,13 +511,13 @@ function gravity(reason, arg){
               var time = returns[1]
               block_to_drop.animate(anim)
 
-              // Once anim is done, update the grids:
-              setTimeout(function(){
-                dec.grid[row - how_far][col] = dec.grid[row][col];
-                dec.grid[row][col] = -1;
-                dec.blockGrid[row - how_far][col] = block_to_drop;
-                dec.blockGrid[row][col] = undefined;
-              }.bind(this), time)
+              // Update the grids:
+              // setTimeout(function(){
+              dec.grid[row - how_far][col] = dec.grid[row][col];
+              dec.grid[row][col] = -1;
+              dec.blockGrid[row - how_far][col] = block_to_drop;
+              dec.blockGrid[row][col] = undefined;
+              // }.bind(this), time)
 
               // Then drop the blocks above it the same amount:
 
@@ -530,12 +552,12 @@ function gravity(reason, arg){
                 block_to_drop.data('dropping', true);
 
                 // Once anim is done, update the grids:
-                setTimeout(function(){
+                // setTimeout(function(){
                   dec.grid[     row - how_far + (q+1)][col] = num_to_drop; //"move the number down"
                   dec.grid[     row + (q+1)][col] = -1;
                   dec.blockGrid[row - how_far + (q+1)][col] = block_to_drop;
                   dec.blockGrid[row + (q+1)][col] = undefined;
-                }.bind(this), time)
+                // }.bind(this), time)
 
                 // dec.grid[     row - how_far][col] = dec.grid[row][col];
                 // dec.grid[     row][col] = -1;
@@ -643,6 +665,7 @@ function findClusters(){
               clear_locs.push([row,col+a])
             }
             marked = true;
+            dec.updateScore(100)
           }
           if (how_many_u>1){ // We have a cluster. Mark it and the matching blocks above it.
             if (!marked){clusters_found++;} // This hasn't been marked yet, so it belongs to a new cluster.
@@ -653,6 +676,7 @@ function findClusters(){
               clear_locs.push([row+a,col])
             }
             marked = true;
+            dec.updateScore(100)
           }
         }
       } // end try
@@ -744,20 +768,25 @@ function raiseGrid(){
   }
   DEBUG ? console.log(2) : null ;
 
-  // Raise the bottom line of the pre grid to the top
-  for(var col=0; col<bucket_width; col++){ // Animate each block:
-    dec.preGrid[pre_height-1][col] = dec.preGrid[0][col]
-    dec.preBlockGrid[pre_height-1][col] = dec.preBlockGrid[0][col]
-    block_to_raise = dec.preBlockGrid[0][col];
-    block_to_raise.animate(raiseBlockAnim(block_to_raise));
+  if(pre_height==2){
+    // Raise the bottom line of the pre grid to the top
+    for(var col=0; col<bucket_width; col++){ // Animate each block:
+      dec.preGrid[pre_height-1][col] = dec.preGrid[0][col]
+      dec.preBlockGrid[pre_height-1][col] = dec.preBlockGrid[0][col]
+      block_to_raise = dec.preBlockGrid[0][col];
+      block_to_raise.animate(raiseBlockAnim(block_to_raise));
+    }
+    DEBUG ? console.log(3) : null ;
   }
-  DEBUG ? console.log(3) : null ;
 
   // Make a new line on the bottom of the pre grid:
   for (var col=0; col<bucket_width; col++){ //column loop
     colorNum = randInt(dec.NUM_COLORS)
-    newBlock = p.rect(MARGIN + col*b_size, MARGIN + (bucket_height + pre_height - 1)*b_size,
-                          b_size, b_size).attr({'fill': dec.COLORS[colorNum]})
+    // newBlock = p.rect(MARGIN + col*b_size, Y_MARGIN + (bucket_height + pre_height - 1)*b_size,
+    //                       b_size, b_size).attr({'fill': dec.COLORS[colorNum]})
+    newBlock = p.image(rune_image_paths[dec.COLOR_NAMES[colorNum]], MARGIN + col*b_size, Y_MARGIN + (bucket_height+pre_height-1)*b_size,
+                       b_size, b_size)
+
     dec.preGrid[0][col]=colorNum;
     dec.preBlockGrid[0][col]=newBlock;
     //if(i==0){console.log('adding type ' + colorNum + ' block to column ' + i + ' of pre...')}
