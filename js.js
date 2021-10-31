@@ -17,6 +17,7 @@ bg = p.image('images/background_final.jpg', 0,0, MAIN_WIDTH, HEIGHT)
 sidebar = p.rect(MAIN_WIDTH, 0, 360 - MAIN_WIDTH, HEIGHT).attr({'fill':'white'})
 
 b_size = 40; //block size
+dec.G = .00001 // gravity factor
 
 rip = 'images/' // rune image path base
 rune_image_paths = {
@@ -27,10 +28,25 @@ rune_image_paths = {
   'purple' : rip + 'purple rune.jpg',
 }
 
-// test for image load:
-// rune_images = {
-//   "red": p.image(rune_image_paths['red'], 5, 5, b_size, b_size)
-// }
+dec.songURL =  "./music/bg.wav"
+
+dec.menuMusic = function(){
+  if (!(dec.menuSong)){ dec.menuSong = new Audio(dec.songURL); } //load song if it hasn't been loaded yet
+  if (dec.activeGame){ //stop game song and reset it
+    dec.activeGame.song.pause();
+    dec.activeGame.song.currentTime=0;
+  }
+  dec.menuSong.currentTime = 0;
+  //qpo.menuSong.volume = qpo.user.musicVol
+  //qpo.menuSong.play();
+  // if (qpo.playMusic) { // loop the menuSong every 1 minute and 48 seconds
+  //   qpo.menuSongInterval = setInterval(function(){
+  //     qpo.menuSong.currentTime = 0;
+  //     qpo.menuSong.play();
+      // console.log("playing menu song again.");
+    // },113000);
+  // }
+}
 
 // bucket = p.path("M0,0 L10, 10").attr({'stroke':'white'})
 
@@ -58,7 +74,6 @@ Y_MARGIN = (HEIGHT - pixel_bucket_height) / 2
 // Make scoreboard:
 // p.image("images/Score_Lives.jpg", MARGIN, 0, 240, 100)
 // var tester = p.rect(MARGIN, 0, 240, 100)
-
 dec.scoreText = p.text(MARGIN, 20, 'Score:')
 dec.scoreAmtText = p.text(MARGIN+40, 20, '0')
 dec.score = 0;
@@ -68,8 +83,6 @@ dec.updateScore = function(amt){
   console.log('score updated')
   return;
 }
-
-dec.G = .00001 // gravity factor
 
 // grid holds the numbers of the colors of the blocks:
 dec.grid = [];
@@ -753,7 +766,7 @@ function raiseGrid(){
 
   // Otherwise, update property state and prep to clear it when finished:
   dec.gridRising = true
-  setInterval(function(){dec.gridRising=false;}, dec.raiseTime+100)
+  setInterval(function(){dec.gridRising=false;}, dec.raiseTime+150)
 
   for(var col=0; col<bucket_width; col++){ // Raise existing rows in main grid
     for(var row=bucket_height-1; row>0; row--){
