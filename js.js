@@ -544,8 +544,7 @@ function gravity(reason, arg){
               dec.blockGrid[row][col] = undefined;
               // }.bind(this), time)
 
-              // Then drop the blocks above it the same amount:
-
+              // Then, drop the blocks above it the same amount.
               // First build the sequence and stack:
               var stack_height = 0 // how many additional blocks are above the one being dropped
               var sequence = [] // The sequence of numbers representing the blocks' colors
