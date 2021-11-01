@@ -71,11 +71,13 @@ Y_MARGIN = (HEIGHT - pixel_bucket_height) / 2
 // bucket = p.rect(MARGIN, MARGIN, bucket_width*b_size,
 //                bucket_height*b_size).attr({'fill':'#222222'})
 
-// Make scoreboard:
-// p.image("images/Score_Lives.jpg", MARGIN, 0, 240, 100)
+// Make scoreboard and lives counter:
+p.image("images/Score_Lives.jpg", MARGIN, 20, 240, 80)
 // var tester = p.rect(MARGIN, 0, 240, 100)
-dec.scoreText = p.text(MARGIN, 20, 'Score:')
-dec.scoreAmtText = p.text(MARGIN+40, 20, '0')
+// dec.scoreText = p.text(MARGIN, 20, 'Score:')
+dec.textsY = 70
+dec.textsSize = 25
+dec.scoreAmtText = p.text(MARGIN+80, dec.textsY, '0').attr({'font-size':dec.textsSize})
 dec.score = 0;
 dec.updateScore = function(amt){
   dec.score += amt
@@ -83,6 +85,15 @@ dec.updateScore = function(amt){
   console.log('score updated')
   return;
 }
+dec.livesAmtText = p.text(MARGIN+205, dec.textsY, '3').attr({'font-size':dec.textsSize})
+dec.lives = 3;
+dec.updateLives = function(amt){
+  dec.lives += amt
+  dec.livesAmtText.attr({'text':dec.lives})
+  console.log('lives updated')
+  return;
+}
+
 
 // grid holds the numbers of the colors of the blocks:
 dec.grid = [];
@@ -237,9 +248,10 @@ function makeBlocks(){
 
 makeBlocks(); //create initial blocks with RNG
 
+// Darken the pregrid:
 pre = p.rect(MARGIN, Y_MARGIN + bucket_height*b_size,
              bucket_width*b_size, pre_height*b_size)
-pre.attr({'stroke':'white', 'fill':'black', 'opacity':.7})
+pre.attr({'stroke':'white', 'fill':'black', 'opacity':.4})
 
 cursor = p.rect(MARGIN+2*b_size, Y_MARGIN+(bucket_height/2)*b_size,
                 2*b_size, b_size)
@@ -497,8 +509,8 @@ function gravity(reason, arg){
   if(reason == 'match'){
     for(var col=0; col<bucket_width; col++){
       for(var row=1; row<bucket_height; row++){
-        if(dec.blockGrid[row][col]){ // Skip this if no block is here.
-          if (dec.grid[row - 1][col] == -1) { //empty space below the block in question. Drop it...
+        if(dec.blockGrid[row][col]){ // If a block is in this spot,
+          if (dec.grid[row - 1][col] == -1) { // If there's empty space below the block in question. Drop it...
             // Find how far to drop it:
             var how_far = 0;
             var go = true;
@@ -636,6 +648,7 @@ function updateAndFind(){
   this.data('dropping', false); //When called, the block that was just dropped is passed as "this"
   updateDebugGrid();
   findClusters();
+  return;
 }
 
 // Find matching clusters. If any are found, call clearBlocks.
